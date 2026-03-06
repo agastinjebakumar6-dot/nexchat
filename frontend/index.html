@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NexChat — Real-Time Messenger</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- Google Identity Services (for Google Login) -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════
+     SPLASH SCREEN
+═══════════════════════════ -->
+<div id="splash" class="splash">
+  <div class="splash-content">
+    <div class="splash-logo">
+      <div class="splash-hex">
+        <svg viewBox="0 0 100 100" width="80" height="80">
+          <polygon points="50,5 93,27.5 93,72.5 50,95 7,72.5 7,27.5"
+                   fill="none" stroke="currentColor" stroke-width="3"/>
+          <polygon points="50,18 80,34 80,66 50,82 20,66 20,34"
+                   fill="currentColor" opacity="0.15"/>
+        </svg>
+      </div>
+      <div class="splash-rings">
+        <div class="ring r1"></div>
+        <div class="ring r2"></div>
+        <div class="ring r3"></div>
+      </div>
+    </div>
+    <h1 class="splash-title">NexChat</h1>
+    <p class="splash-sub">Connecting you to the world</p>
+    <div class="splash-bar">
+      <div class="splash-fill" id="splash-fill"></div>
+    </div>
+    <p class="splash-pct" id="splash-pct">Loading…</p>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════
+     AUTH SCREEN
+═══════════════════════════ -->
+<div id="auth-screen" class="page hidden">
+  <div class="auth-bg">
+    <canvas id="auth-canvas"></canvas>
+  </div>
+
+  <div class="auth-card glass">
+    <div class="auth-brand">
+      <svg viewBox="0 0 100 100" width="36" height="36" class="brand-hex">
+        <polygon points="50,5 93,27.5 93,72.5 50,95 7,72.5 7,27.5"
+                 fill="none" stroke="currentColor" stroke-width="4"/>
+      </svg>
+      <h1>NexChat</h1>
+    </div>
+    <p class="auth-tag">Real-time · Secure · Private</p>
+
+    <!-- GOOGLE LOGIN -->
+    <div class="google-btn" id="google-signin-btn">
+      <svg viewBox="0 0 24 24" width="20" height="20">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      <span>Continue with Google</span>
+    </div>
+
+    <div class="auth-divider"><span>or use email</span></div>
+
+    <!-- TABS -->
+    <div class="auth-tabs">
+      <button class="atab active" data-tab="login">Sign In</button>
+      <button class="atab" data-tab="register">Register</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <form id="login-form" class="aform active">
+      <div class="afield">
+        <span class="afield-icon">👤</span>
+        <input type="text" id="login-user" placeholder="Username" autocomplete="off"/>
+      </div>
+      <div class="afield">
+        <span class="afield-icon">🔒</span>
+        <input type="password" id="login-pass" placeholder="Password"/>
+        <button type="button" class="eye-btn" id="eye-login">👁</button>
+      </div>
+      <div class="auth-err hidden" id="login-err"></div>
+      <button type="submit" class="auth-submit" id="login-btn">
+        <span>Sign In</span>
+        <div class="btn-arrow">→</div>
+      </button>
+    </form>
+
+    <!-- REGISTER FORM -->
+    <form id="reg-form" class="aform">
+      <div class="afield">
+        <span class="afield-icon">👤</span>
+        <input type="text" id="reg-user" placeholder="Username" autocomplete="off"/>
+      </div>
+      <div class="afield">
+        <span class="afield-icon">✉️</span>
+        <input type="email" id="reg-email" placeholder="Email address"/>
+      </div>
+      <div class="afield">
+        <span class="afield-icon">🔒</span>
+        <input type="password" id="reg-pass" placeholder="Password (min 8 chars)"/>
+        <button type="button" class="eye-btn" id="eye-reg">👁</button>
+      </div>
+      <div class="pass-strength hidden" id="pass-strength">
+        <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+        <span id="strength-label">Weak</span>
+      </div>
+      <div class="auth-err hidden" id="reg-err"></div>
+      <button type="submit" class="auth-submit" id="reg-btn">
+        <span>Create Account</span>
+        <div class="btn-arrow">→</div>
+      </button>
+    </form>
+
+    <div class="privacy-note">
+      🔒 Your data is private. We never share your information.
+    </div>
+
+    <div class="ws-indicator">
+      <span class="ws-dot" id="ws-dot"></span>
+      <span id="ws-label">Connecting…</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════
+     MAIN APP
+═══════════════════════════ -->
+<div id="app" class="page hidden">
+
+  <!-- TOP NAV BAR (mobile) -->
+  <div class="top-bar" id="top-bar">
+    <button class="tb-btn" id="btn-menu">☰</button>
+    <div class="tb-title">
+      <span id="tb-room-name"># general</span>
+    </div>
+    <div class="tb-right">
+      <button class="tb-btn" id="btn-theme-top">🌙</button>
+      <div class="tb-avatar" id="tb-avatar">?</div>
+    </div>
+  </div>
+
+  <div class="app-body">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar glass" id="sidebar">
+
+      <div class="sb-header">
+        <div class="sb-brand">
+          <svg viewBox="0 0 100 100" width="22" height="22">
+            <polygon points="50,5 93,27.5 93,72.5 50,95 7,72.5 7,27.5"
+                     fill="none" stroke="currentColor" stroke-width="5"/>
+          </svg>
+          <span>NexChat</span>
+        </div>
+        <div class="sb-header-actions">
+          <button class="sb-icon-btn" id="btn-theme" title="Toggle Theme">🌙</button>
+          <button class="sb-icon-btn danger" id="btn-logout" title="Logout">⏻</button>
+        </div>
+      </div>
+
+      <!-- User card -->
+      <div class="sb-user" id="sb-user-card">
+        <div class="sb-avatar-wrap">
+          <img class="sb-avatar" id="sb-avatar" src="" alt=""/>
+          <div class="sb-avatar-init hidden" id="sb-avatar-init">?</div>
+          <span class="sb-online-dot"></span>
+        </div>
+        <div class="sb-user-info">
+          <div class="sb-username" id="sb-username">—</div>
+          <div class="sb-email" id="sb-email">—</div>
+        </div>
+        <button class="sb-icon-btn" id="btn-profile" title="Edit Profile">✏️</button>
+      </div>
+
+      <!-- Search -->
+      <div class="sb-search">
+        <input type="text" id="sb-search" placeholder="🔍 Search channels…"/>
+      </div>
+
+      <!-- Channels -->
+      <div class="sb-section">
+        <div class="sb-section-label">
+          <span>CHANNELS</span>
+          <button class="add-btn" id="btn-add-room" title="Add Channel">＋</button>
+        </div>
+        <ul id="room-list" class="sb-list"></ul>
+      </div>
+
+      <!-- Online users -->
+      <div class="sb-section">
+        <div class="sb-section-label">
+          <span>ONLINE — <span id="online-count">0</span></span>
+        </div>
+        <ul id="online-list" class="sb-list"></ul>
+      </div>
+
+      <!-- DB status -->
+      <div class="sb-dbstatus">
+        <div class="dbs-row">
+          <span>🗄 SQLite</span>
+          <span class="dbs-badge green" id="st-sqlite">Active</span>
+        </div>
+        <div class="dbs-row">
+          <span>🍃 MongoDB</span>
+          <span class="dbs-badge" id="st-mongo">Checking</span>
+        </div>
+        <div class="dbs-row">
+          <span>⚡ WebSocket</span>
+          <span class="dbs-badge green" id="st-ws">Live</span>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ── CHAT AREA ── -->
+    <main class="chat-main">
+
+      <!-- Chat header (desktop) -->
+      <header class="chat-header">
+        <div class="ch-left">
+          <span class="ch-hash">#</span>
+          <span id="ch-room" class="ch-room">general</span>
+          <span class="ch-meta" id="ch-meta">Loading…</span>
+        </div>
+        <div class="ch-right">
+          <button class="ch-btn" id="btn-search-msg">🔍</button>
+          <button class="ch-btn" id="btn-members">👥</button>
+        </div>
+      </header>
+
+      <!-- Search bar -->
+      <div class="search-bar hidden" id="search-bar">
+        <input type="text" id="search-input" placeholder="Search messages in this channel…"/>
+        <button class="ch-btn" id="btn-close-search">✕</button>
+      </div>
+
+      <!-- Messages -->
+      <div class="messages" id="messages">
+        <div class="welcome-msg" id="welcome-msg">
+          <div class="wm-hex">⬡</div>
+          <h2>Welcome to NexChat</h2>
+          <p>Select a channel on the left to start chatting</p>
+        </div>
+      </div>
+
+      <!-- Typing -->
+      <div class="typing-row hidden" id="typing-row">
+        <div class="typing-dots"><i></i><i></i><i></i></div>
+        <span id="typing-label"></span>
+      </div>
+
+      <!-- Input -->
+      <div class="input-row">
+        <button class="inp-btn" id="btn-attach" title="Attach File">📎</button>
+        <div class="inp-wrap">
+          <textarea id="inp" placeholder="Message #general…" rows="1"></textarea>
+        </div>
+        <button class="inp-btn" id="btn-emoji" title="Emoji">☺</button>
+        <button class="send-btn" id="btn-send">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+      </div>
+
+    </main>
+
+    <!-- ── MEMBERS PANEL ── -->
+    <aside class="members-panel glass hidden" id="members-panel">
+      <div class="mp-header">
+        <span>Members</span>
+        <button class="ch-btn" id="btn-close-members">✕</button>
+      </div>
+      <div class="mp-group">ONLINE — <span id="mp-online">0</span></div>
+      <ul id="mp-online-list" class="mp-list"></ul>
+      <div class="mp-group" style="margin-top:14px">OFFLINE</div>
+      <ul id="mp-offline-list" class="mp-list"></ul>
+    </aside>
+
+  </div><!-- .app-body -->
+
+  <!-- ── MOBILE BOTTOM NAV ── -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="bnav-btn active" data-view="chat" id="bnav-chat">
+      <span class="bnav-icon">💬</span>
+      <span class="bnav-label">Chats</span>
+    </button>
+    <button class="bnav-btn" data-view="channels" id="bnav-channels">
+      <span class="bnav-icon">#</span>
+      <span class="bnav-label">Channels</span>
+    </button>
+    <button class="bnav-btn" data-view="members" id="bnav-members">
+      <span class="bnav-icon">👥</span>
+      <span class="bnav-label">Members</span>
+    </button>
+    <button class="bnav-btn" data-view="profile" id="bnav-profile">
+      <span class="bnav-icon">👤</span>
+      <span class="bnav-label">Profile</span>
+    </button>
+  </nav>
+
+</div><!-- #app -->
+
+
+<!-- ═══════════════════════════
+     EMOJI PICKER
+═══════════════════════════ -->
+<div class="emoji-picker glass hidden" id="emoji-picker">
+  <div class="ep-cats" id="ep-cats"></div>
+  <div class="ep-grid" id="ep-grid"></div>
+</div>
+
+
+<!-- ═══════════════════════════
+     PROFILE MODAL
+═══════════════════════════ -->
+<div class="modal-bg hidden" id="profile-modal">
+  <div class="modal glass">
+    <div class="modal-header">
+      <h3>My Profile</h3>
+      <button class="ch-btn" id="btn-close-profile">✕</button>
+    </div>
+
+    <div class="profile-avatar-section">
+      <div class="profile-av-wrap">
+        <img id="profile-avatar-img" src="" alt="" class="profile-av-img hidden"/>
+        <div id="profile-avatar-init" class="profile-av-init">?</div>
+        <button class="av-change-btn" id="btn-change-av">📷</button>
+      </div>
+      <input type="text" id="profile-av-url" placeholder="Paste image URL here…" class="av-url-input"/>
+    </div>
+
+    <div class="profile-fields">
+      <div class="pf-row">
+        <label>Username</label>
+        <input type="text" id="profile-username" readonly/>
+      </div>
+      <div class="pf-row">
+        <label>Email</label>
+        <input type="text" id="profile-email" readonly/>
+      </div>
+      <div class="pf-row">
+        <label>Bio</label>
+        <textarea id="profile-bio" placeholder="Tell something about yourself…" rows="3"></textarea>
+      </div>
+    </div>
+
+    <div class="profile-stats">
+      <div class="pstat">
+        <div class="pstat-num" id="pstat-joined">—</div>
+        <div class="pstat-label">Joined</div>
+      </div>
+    </div>
+
+    <button class="auth-submit" id="btn-save-profile">
+      <span>Save Profile</span>
+      <div class="btn-arrow">→</div>
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════
+     ADD ROOM MODAL
+═══════════════════════════ -->
+<div class="modal-bg hidden" id="add-room-modal">
+  <div class="modal glass">
+    <div class="modal-header">
+      <h3>Create Channel</h3>
+      <button class="ch-btn" id="btn-close-room">✕</button>
+    </div>
+    <div class="afield" style="margin-top:12px">
+      <span class="afield-icon">#</span>
+      <input type="text" id="new-room-input" placeholder="channel-name" autocomplete="off"/>
+    </div>
+    <button class="auth-submit" id="btn-create-room" style="margin-top:16px">
+      <span>Create Channel</span>
+      <div class="btn-arrow">→</div>
+    </button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════
+     FILE MODAL
+═══════════════════════════ -->
+<div class="modal-bg hidden" id="file-modal">
+  <div class="modal glass">
+    <div class="modal-header">
+      <h3>📎 Send File</h3>
+      <button class="ch-btn" id="btn-close-file">✕</button>
+    </div>
+    <div class="file-preview-box" id="file-preview">Drop zone</div>
+    <div class="modal-actions">
+      <button class="cancel-btn" id="btn-cancel-file">Cancel</button>
+      <button class="auth-submit sm" id="btn-confirm-file">
+        <span>Send</span><div class="btn-arrow">→</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file-input" style="display:none"/>
+
+<!-- GOOGLE CLIENT ID placeholder — set in app.js -->
+<div id="google-client-id" data-client-id="901169901634-pbf08rrpk71o7nq24j6hgkmlc6batoo2.apps.googleusercontent.com"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

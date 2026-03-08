@@ -361,6 +361,9 @@ window.addEventListener('load', () => {
     google.accounts.id.prompt();
   });
 });
+window.handleGoogleOneTap = function(response) {
+    handleGoogleCredential(response);
+};
 
 async function handleGoogleCredential(response) {
   try {

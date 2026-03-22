@@ -359,14 +359,90 @@ $('#reg-form')?.addEventListener('submit', async e => {
   finally { setLoading('#reg-btn',false); }
 });
 
-// Google
+// Google OAuth — Redirect mode (works on all devices, no popup)
 window.addEventListener('load', () => {
-  if(typeof google==='undefined'||!GOOGLE_CLIENT_ID||GOOGLE_CLIENT_ID==='YOUR_GOOGLE_CLIENT_ID_HERE'){
+  // Handle redirect callback first (after Google redirects back)
+  handleGoogleRedirectCallback();
+
+  if(!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID==='YOUR_GOOGLE_CLIENT_ID_HERE'){
     const btn=$('#google-signin-btn'); if(btn)btn.style.display='none'; return;
   }
-  google.accounts.id.initialize({ client_id:GOOGLE_CLIENT_ID, callback:handleGoogleCredential, auto_select:false, ux_mode:'popup' });
-  google.accounts.id.renderButton($('#google-signin-btn'),{ theme:'filled_black', size:'large', width:360, text:'continue_with', shape:'rectangular', logo_alignment:'left' });
+
+  // Build Google button manually — redirect mode
+  const wrap = $('#google-signin-btn');
+  if (!wrap) return;
+  wrap.innerHTML = `
+    <button class="google-btn" id="google-redirect-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+      </svg>
+      Continue with Google
+    </button>`;
+
+  $('#google-redirect-btn')?.addEventListener('click', startGoogleRedirect);
 });
+
+function startGoogleRedirect() {
+  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID_HERE') {
+    showToast('Google login not configured.'); return;
+  }
+  const params = new URLSearchParams({
+    client_id:     GOOGLE_CLIENT_ID,
+    redirect_uri:  window.location.origin,
+    response_type: 'token',
+    scope:         'openid email profile',
+    prompt:        'select_account',
+  });
+  // Save current page state
+  sessionStorage.setItem('nexchat_pre_google', '1');
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+}
+
+async function handleGoogleRedirectCallback() {
+  // Google redirects back with #access_token=... in the URL hash
+  const hash = window.location.hash;
+  if (!hash || !hash.includes('access_token')) return;
+
+  const params   = new URLSearchParams(hash.substring(1));
+  const token    = params.get('access_token');
+  const error    = params.get('error');
+
+  // Clean hash from URL immediately
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  if (error || !token) {
+    showToast('Google login cancelled.'); return;
+  }
+
+  showToast('Signing in with Google…');
+
+  try {
+    // Get user info from Google using the access token
+    const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!infoRes.ok) throw new Error('Failed to get user info');
+    const ginfo = await infoRes.json();
+
+    // Send to our backend
+    const res  = await fetch(`${API}/auth/google`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ id_token: token, userinfo: ginfo }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showToast('Google login failed: ' + data.error); return; }
+
+    doLogin(data);
+    showToast(`Welcome, ${data.username}! 🎉`);
+  } catch (e) {
+    console.error('[Google]', e);
+    showToast('Google login failed. Please try email login.');
+  }
+}
 
 window.handleGoogleOneTap = function(response) { handleGoogleCredential(response); };
 
